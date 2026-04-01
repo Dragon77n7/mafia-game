@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAFIA — Rozgrywka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #181818;
+    --border: #252525;
+    --red: #c0392b;
+    --red-light: #e74c3c;
+    --gold: #d4a853;
+    --gold-light: #f0c060;
+    --blue: #2980b9;
+    --blue-light: #3498db;
+    --green: #27ae60;
+    --green-light: #2ecc71;
+    --text: #e8e0d5;
+    --text-dim: #6a6055;
+    --text-mid: #a89880;
+    --accent: var(--gold);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Text', serif;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(192,57,43,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 80% 20%, rgba(212,168,83,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+
+  /* ─── PANELS ─── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ─── HEADER ─── */
+  .game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .game-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold), var(--red-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .round-info {
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  /* ─── ROLE BANNER ─── */
+  .role-banner {
+    text-align: center;
+    padding: 2rem;
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .role-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.05;
+    background: repeating-linear-gradient(45deg, currentColor 0, currentColor 1px, transparent 0, transparent 50%);
+    background-size: 10px 10px;
+  }
+
+  .role-banner.mafia { background: rgba(192,57,43,0.15); border: 1px solid rgba(192,57,43,0.4); }
+  .role-banner.police { background: rgba(41,128,185,0.15); border: 1px solid rgba(41,128,185,0.4); }
+  .role-banner.doctor { background: rgba(39,174,96,0.15); border: 1px solid rgba(39,174,96,0.4); }
+  .role-banner.civilian { background: rgba(212,168,83,0.1); border: 1px solid rgba(212,168,83,0.3); }
+
+  .role-icon { font-size: 3rem; margin-bottom: 0.5rem; display: block; }
+  .role-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  .role-banner.mafia .role-name { color: var(--red-light); }
+  .role-banner.police .role-name { color: var(--blue-light); }
+  .role-banner.doctor .role-name { color: var(--green-light); }
+  .role-banner.civilian .role-name { color: var(--gold-light); }
+
+  .role-desc {
+    font-style: italic;
+    color: var(--text-mid);
+    margin-top: 0.3rem;
+    font-size: 1rem;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── PLAYERS LIST ─── */
+  .player-btn-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .player-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 1px;
+    color: var(--text);
+    font-family: 'Crimson Text', serif;
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+  }
+
+  .player-btn:hover:not(:disabled) {
+    border-color: var(--gold);
+    background: rgba(212,168,83,0.08);
+  }
+
+  .player-btn.selected {
+    border-color: var(--gold);
+    background: rgba(212,168,83,0.15);
+    color: var(--gold-light);
+  }
+
+  .player-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .player-status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+  }
+
+  .player-status-dot.dead { background: var(--red); }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 1px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-full { width: 100%; }
+  .btn-primary { background: linear-gradient(135deg, var(--red), var(--red-light)); color: white; }
+  .btn-primary:hover { filter: brightness(1.15); }
+  .btn-blue { background: linear-gradient(135deg, var(--blue), var(--blue-light)); color: white; }
+  .btn-green { background: linear-gradient(135deg, var(--green), var(--green-light)); color: white; }
+  .btn-ghost { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+  .btn-ghost:hover { background: rgba(212,168,83,0.1); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+
+  /* ─── STATUS MESSAGE ─── */
+  .status-msg {
+    background: var(--surface2);
+    border-left: 3px solid var(--gold);
+    padding: 0.75rem 1rem;
+    font-style: italic;
+    color: var(--text-mid);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .status-msg.danger { border-left-color: var(--red); color: var(--red-light); }
+  .status-msg.success { border-left-color: var(--green); color: var(--green-light); }
+  .status-msg.info { border-left-color: var(--blue); color: var(--blue-light); }
+
+  /* ─── MAFIA TEAM ─── */
+  .mafia-team {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .mafia-tag {
+    background: rgba(192,57,43,0.2);
+    border: 1px solid rgba(192,57,43,0.4);
+    color: var(--red-light);
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85rem;
+    border-radius: 1px;
+  }
+
+  /* ─── CHAT ─── */
+  .chat-box {
+    height: 250px;
+    overflow-y: auto;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-radius: 1px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-msg {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .chat-msg-name {
+    font-weight: 600;
+    color: var(--gold);
+  }
+
+  .chat-input-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .chat-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Crimson Text', serif;
+    font-size: 1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 1px;
+    outline: none;
+  }
+  .chat-input:focus { border-color: var(--gold); }
+
+  /* ─── DEAD OVERLAY ─── */
+  .dead-overlay {
+    text-align: center;
+    padding: 3rem 2rem;
+  }
+
+  .dead-overlay h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: var(--red-light);
+    margin-bottom: 1rem;
+  }
+
+  /* ─── GAME OVER ─── */
+  .game-over {
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .game-over h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .winners-reveal {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .winner-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .winner-card .w-role {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.2rem;
+  }
+
+  .winner-card.mafia .w-role { color: var(--red-light); }
+  .winner-card.police .w-role { color: var(--blue-light); }
+  .winner-card.doctor .w-role { color: var(--green-light); }
+  .winner-card.civilian .w-role { color: var(--gold); }
+  .winner-card.dead { opacity: 0.5; }
+
+  /* ─── VOTE PROGRESS ─── */
+  .vote-progress {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 0.6rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--text-mid);
+  }
+
+  .vote-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 0.4rem;
+    overflow: hidden;
+  }
+
+  .vote-bar-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--red), var(--gold));
+    transition: width 0.3s;
+  }
+
+  /* ─── DINO GAME ─── */
+  #dino-canvas {
+    display: block;
+    background: #111;
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 600px;
+    border-radius: 1px;
+  }
+
+  .dino-controls {
+    text-align: center;
+    margin-top: 0.75rem;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  .night-waiting {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 0.95rem;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+  /* Mafia vote update */
+  .vote-log {
+    font-size: 0.85rem;
+    color: var(--text-mid);
+    font-style: italic;
+    margin-top: 0.75rem;
+  }
+
+  .separator {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="status-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:0.6rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+  <div style="font-size:0.85rem;color:var(--text-dim)">
+    Runda: <span id="sb-round" style="color:var(--gold)">1</span>
+  </div>
+  <div style="font-size:0.85rem">
+    🔪 Mafia: <span id="sb-mafia" style="color:var(--red-light);font-weight:700">?</span>
+    &nbsp;|&nbsp;
+    👤 Żywi: <span id="sb-alive" style="color:var(--text)">?</span>
+  </div>
+  <div id="sb-vote" style="font-size:0.8rem;color:var(--text-dim);font-style:italic"></div>
+</div>
+<div id="sb-news" style="display:none;padding:0.6rem 1.2rem;margin-bottom:1rem;border-radius:2px;font-size:1rem;font-style:italic"></div>
+<div style="display:none" id="sb-news-placeholder">
+</div>
+
+</div>
+<div class="game-header">
+    <div class="game-title">☽ MAFIA</div>
+    <div class="round-info" id="round-info">Runda 1</div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- PANEL: OCZEKIWANIE (podczas połączenia) -->
+  <!-- ══════════════════════════════════════ -->
+  <div id="panel-connecting" class="panel active">
+    <div class="status-msg">Łączenie z serwerem…</div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: MAFIA — NOC     -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-mafia-night" class="panel">
+    <div class="role-banner mafia">
+      <span class="role-icon">🔪</span>
+      <div class="role-name">MAFIA</div>
+      <div class="role-desc">Wybierz ofiarę tej nocy</div>
+    </div>
+
+    <div class="card" id="mafia-team-card">
+      <div class="card-title">Twoi wspólnicy</div>
+      <div class="mafia-team" id="mafia-team-list">— jesteś sam —</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 Wskaż ofiarę</div>
+      <div class="player-btn-list" id="mafia-target-list"></div>
+      <div class="vote-log" id="mafia-vote-log"></div>
+      <button id="mafia-confirm-btn" class="btn btn-primary btn-full" style="display:none;margin-top:1rem" onclick="mafiaConfirm()">🔪 Potwierdź wybór</button>
+    </div>
+  </div>
+
+  <!-- CZAT MAFII -->
+  <div id="mafia-chat-box" style="display:none;margin-bottom:1rem">
+    <div class="card" style="border-color:rgba(192,57,43,0.4)">
+      <div class="card-title" style="color:var(--red-light)">🔪 Tajny czat Mafii</div>
+      <div class="chat-box" id="mafia-chat-messages" style="height:150px"></div>
+      <div class="chat-input-row" style="margin-top:0.5rem">
+        <input type="text" class="chat-input" id="mafia-chat-input" placeholder="Tylko mafia to widzi…" maxlength="200">
+        <button class="btn" style="background:var(--red);color:white" onclick="sendMafiaChat()">Wyślij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: POLICJANT — NOC  -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-police-night" class="panel">
+    <div class="role-banner police">
+      <span class="role-icon">🔎</span>
+      <div class="role-name">POLICJANT</div>
+      <div class="role-desc">Sprawdź rolę wybranego gracza</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔍 Kogo chcesz sprawdzić?</div>
+      <div class="player-btn-list" id="police-target-list"></div>
+    </div>
+
+    <div class="status-msg info" id="police-result-msg" style="display:none"></div>
+    <div class="night-waiting" id="police-done-msg" style="display:none">Czekanie na zakończenie nocy…</div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: LEKARZ — NOC     -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-doctor-night" class="panel">
+    <div class="role-banner doctor">
+      <span class="role-icon">💉</span>
+      <div class="role-name">LEKARZ</div>
+      <div class="role-desc">Kogo ochraniasz tej nocy?</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏥 Wybierz pacjenta</div>
+      <div class="player-btn-list" id="doctor-target-list"></div>
+    </div>
+
+    <div class="night-waiting" id="doctor-done-msg" style="display:none">Czekanie na zakończenie nocy…</div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: CYWIL — NOC      -->
+  <!-- (Gra Dino)              -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-civilian-night" class="panel">
+    <div class="role-banner civilian">
+      <span class="role-icon">🏃</span>
+      <div class="role-name">CYWIL</div>
+      <div class="role-desc">Przetrwaj noc… grając!</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🦖 Dino Run — Skakaj przez przeszkody!</div>
+      <canvas id="dino-canvas" width="600" height="140"></canvas>
+      <div class="dino-controls">Spacja / Dotknij ekran — skocz</div>
+    </div>
+
+    <div class="night-waiting">Mafia, Policja i Lekarze pracują… czekaj na świt.</div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: DZIEŃ — ROZMOWA  -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-day" class="panel">
+    <div class="status-msg" id="day-announcement">Nastał dzień. Rozmawiajcie!</div>
+
+    <div class="card">
+      <div class="card-title">💬 Rozmowa</div>
+      <div class="chat-box" id="chat-box"></div>
+      <div id="police-day-info" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:1px;padding:0.75rem 1rem;margin-bottom:0.75rem"></div>
+      <div class="chat-input-row">
+        <input type="text" class="chat-input" id="chat-input" placeholder="Napisz wiadomość…" maxlength="200">
+        <button class="btn btn-ghost" onclick="sendChat()">Wyślij</button>
+      </div>
+    </div>
+
+    <div id="vote-for-voting-wrap">
+      <button class="btn btn-ghost btn-full" id="vote-for-voting-btn" onclick="voteForVoting()">🗳 Zagłosuj za przejściem do głosowania</button>
+      <div id="voting-poll-bar" style="margin-top:0.5rem;display:none">
+        <div style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.3rem">
+          Chcą głosować: <span id="vfv-count">0</span>/<span id="vfv-total">0</span> (potrzeba <span id="vfv-needed">0</span>)
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px">
+          <div id="vfv-bar-fill" style="height:100%;background:linear-gradient(to right,var(--gold),var(--red));border-radius:2px;transition:width 0.3s;width:0%"></div>
+        </div>
+        <div id="vfv-names" style="font-size:0.8rem;color:var(--text-dim);margin-top:0.3rem;font-style:italic"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: GŁOSOWANIE       -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-voting" class="panel">
+    <div class="status-msg danger">⚖ Czas głosowania! Kogo skazujemy?</div>
+
+    <div class="card">
+      <div class="vote-progress">
+        <span id="vote-count-text">Głosy: 0/0</span>
+        <span style="font-style:italic;font-size:0.8rem">czekaj na wszystkich</span>
+      </div>
+      <div class="vote-bar"><div class="vote-bar-fill" id="vote-bar-fill" style="width:0%"></div></div>
+      <div style="height:1rem"></div>
+      <div class="card-title">Na kogo głosujesz?</div>
+      <div class="player-btn-list" id="voting-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: MARTWY           -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-dead" class="panel">
+    <div class="dead-overlay">
+      <div style="font-size:4rem">💀</div>
+      <h2>Nie żyjesz</h2>
+      <p style="color:var(--text-mid);font-style:italic;font-size:1.1rem">Twoja rola: <strong id="dead-role-reveal" style="color:var(--gold)"></strong></p>
+      <p style="color:var(--text-dim);margin-top:1rem;font-size:0.9rem">Możesz obserwować dalszą grę…</p>
+    </div>
+
+    <!-- Obserwuj czat -->
+    <div class="card" id="dead-chat-card" style="display:none">
+      <div class="card-title">Obserwujesz (martwy)</div>
+      <div class="chat-box" id="dead-chat-box"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ -->
+  <!-- PANEL: KONIEC GRY       -->
+  <!-- ═══════════════════════ -->
+  <div id="panel-gameover" class="panel">
+    <div class="game-over">
+      <div style="font-size:3rem" id="gameover-icon">🏆</div>
+      <h2 id="gameover-title">Koniec gry</h2>
+      <p style="color:var(--text-mid);font-style:italic" id="gameover-desc"></p>
+
+      <div class="winners-reveal" id="gameover-players"></div>
+
+      <button class="btn btn-ghost" onclick="location.href='index.html'">Zagraj ponownie</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let ws;
+let policeHistory = [];
+let state = {
+  myId: null, myRoom: null, isHost: false,
+  role: null, phase: null, round: 1,
+  players: [], mafiaTeam: [],
+  alive: true, votedToday: false, nightDone: false,
+};
+
+// Load from sessionStorage
+const saved = sessionStorage.getItem('mafiaState');
+if (!saved) { location.href = 'index.html'; }
+else {
+  const s = JSON.parse(saved);
+  Object.assign(state, s);
+  sessionStorage.removeItem('mafiaState');
+  initWebSocket();
+}
+
+// ══════════════════════════════════════
+// PANELS
+// ══════════════════════════════════════
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+// ══════════════════════════════════════
+// WEBSOCKET
+// ══════════════════════════════════════
+function initWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onopen = () => {
+    // Rejoin room
+    ws.send(JSON.stringify({
+      type: 'JOIN_ROOM',
+      name: state.playerName || 'Gracz',
+      roomCode: state.myRoom,
+      playerId: state.myId,
+    }));
+    // Actually, we need a different approach — server must handle reconnect
+    // For simplicity, we drive from saved state
+    applyPhase(state.phase, state);
+  };
+
+  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+
+  ws.onclose = () => {
+    // Show disconnect notice but don't redirect
+  };
+}
+
+function send(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
+}
+
+// ══════════════════════════════════════
+// MESSAGE HANDLER
+// ══════════════════════════════════════
+function handleMessage(msg) {
+  switch (msg.type) {
+
+    case 'ROOM_JOINED':
+      // Reconnected — server sees us as new player, ignore
+      // Phase was set from saved state
+      break;
+
+    case 'MAFIA_VOTES_UPDATE':
+      updateMafiaVoteLog(msg.voterNames);
+      break;
+
+    case 'POLICE_RESULT':
+      showPoliceResult(msg.target);
+      break;
+
+    case 'DOCTOR_ACK':
+      document.querySelectorAll('#doctor-target-list .player-btn').forEach(b => b.disabled = true);
+      document.getElementById('doctor-done-msg').style.display = 'block';
+      break;
+
+    case 'NIGHT_RESULT':
+      state.players = msg.players;
+      if (msg.mafiaLeft !== undefined) state.knownMafiaCount = msg.mafiaLeft;
+      updateStatusBar();
+      if (msg.killed) {
+        showNews('☠ Tej nocy zginął: ' + msg.killed.name + ' — był ' + roleLabel(msg.killed.role) + '. Za chwilę nastaje dzień…', 'danger');
+      } else if (msg.saved) {
+        showNews('🏥 Lekarz uratował kogoś tej nocy. Nikt nie zginął. Za chwilę nastaje dzień…', 'success');
+      } else {
+        showNews('🌅 Spokojna noc — nikt nie zginął. Za chwilę nastaje dzień…', 'neutral');
+      }
+      setTimeout(() => {
+        state.phase = 'day';
+        showNightResult(msg);
+      }, 3000);
+      state.round = msg.round || state.round;
+      state.votedToday = false;
+      state.nightDone = false;
+      showNightResult(msg);
+      break;
+
+    case 'NIGHT_START':
+      state.players = msg.players;
+      state.phase = 'night';
+      state.round = msg.round;
+      state.mafiaTeam = msg.mafiaTeam || [];
+      state.nightDone = false;
+      state.votedToday = false;
+      document.getElementById('round-info').textContent = `Runda ${state.round}`;
+      applyPhase('night', state);
+      break;
+
+    case 'VOTING_POLL_UPDATE': {
+      const bar = document.getElementById('voting-poll-bar');
+      if (bar) {
+        bar.style.display = 'block';
+        document.getElementById('vfv-count').textContent = msg.count;
+        document.getElementById('vfv-total').textContent = msg.total;
+        document.getElementById('vfv-needed').textContent = msg.needed;
+        document.getElementById('vfv-bar-fill').style.width = Math.round(msg.count/msg.total*100)+'%';
+        document.getElementById('vfv-names').textContent = msg.voters.join(', ');
+      }
+      break;
+    }
+
+    case 'VOTING_STARTED':
+      state.phase = 'voting';
+      state.votedToday = false;
+      if (msg.players && msg.players.length > 0) state.players = msg.players;
+      console.log('[VOTING] gracze do głosowania:', state.players);
+      renderVoting();
+      showPanel('panel-voting');
+      break;
+
+    case 'VOTE_UPDATE':
+      updateVoteProgress(msg.voteCount, msg.total);
+      break;
+
+    case 'DAY_RESULT':
+      state.players = msg.players || state.players;
+      if (msg.mafiaLeft !== undefined) state.knownMafiaCount = msg.mafiaLeft;
+      updateStatusBar();
+      if (msg.tie) {
+        showNews('⚖ Remis w głosowaniu — nikt nie zostaje wyrzucony. Za chwilę nastaje noc…', 'neutral');
+      } else if (msg.eliminated) {
+        showNews('🗳 Miasto wyrzuciło: ' + msg.eliminated.name + ' — był ' + roleLabel(msg.eliminated.role) + '. Za chwilę nastaje noc…', 'danger');
+      }
+      // Poczekaj 3 sekundy żeby gracz zdążył przeczytać
+      setTimeout(() => {
+        state.phase = 'night';
+        state.round = msg.round;
+        state.mafiaTeam = msg.mafiaTeam || state.mafiaTeam;
+        showDayResult(msg);
+      }, 3000);
+      break;
+
+    case 'CHAT_MESSAGE':
+      appendChat(msg);
+      break;
+
+    case 'YOU_DIED':
+      if (!state.role) state.role = msg.role;
+      showDeath(msg.role);
+      break;
+
+    case 'MAFIA_CHAT': {
+      const mbox = document.getElementById('mafia-chat-messages');
+      if (mbox) {
+        const div = document.createElement('div');
+        div.className = 'chat-msg';
+        div.innerHTML = '<span class="chat-msg-name" style="color:var(--red-light)">' + msg.senderName + ':</span> ' + escapeHtml(msg.text);
+        mbox.appendChild(div);
+        mbox.scrollTop = mbox.scrollHeight;
+      }
+      break;
+    }
+
+    case 'GAME_OVER':
+      showGameOver(msg);
+      break;
+  }
+}
+
+// ══════════════════════════════════════
+// PHASE RENDERING
+// ══════════════════════════════════════
+function applyPhase(phase, data) {
+  document.getElementById('round-info').textContent = `Runda ${data.round || 1}`;
+  updateStatusBar();
+
+  if (!state.alive) {
+    showPanel('panel-dead');
+    return;
+  }
+
+  if (phase === 'night') {
+    switch (state.role) {
+      case 'mafia':   renderMafiaNight(); showPanel('panel-mafia-night'); break;
+      case 'police':  renderPoliceNight(); showPanel('panel-police-night'); break;
+      case 'doctor':  renderDoctorNight(); showPanel('panel-doctor-night'); break;
+      default:        startDinoGame(); showPanel('panel-civilian-night'); break;
+    }
+  } else if (phase === 'day') {
+    renderDay();
+    showPanel('panel-day');
+  } else if (phase === 'voting') {
+    renderVoting();
+    showPanel('panel-voting');
+  }
+}
+
+function alivePlayers() {
+  return state.players.filter(p => p.alive && p.id !== state.myId);
+}
+
+// ══════════════════════════════════════
+// MAFIA NIGHT
+// ══════════════════════════════════════
+function renderMafiaNight() {
+  // Team
+  const teamEl = document.getElementById('mafia-team-list');
+  if (state.mafiaTeam && state.mafiaTeam.length > 0) {
+    teamEl.innerHTML = state.mafiaTeam.map(m => `<span class="mafia-tag">🔪 ${m.name}</span>`).join('');
+  }
+
+  // Targets
+  const list = document.getElementById('mafia-target-list');
+  const nonMafia = state.players.filter(p => p.alive && p.id !== state.myId && !state.mafiaTeam.find(m => m.id === p.id));
+  list.innerHTML = nonMafia.map(p => `
+    <button class="player-btn" onclick="mafiaVote('${p.id}', this)">
+      <span class="player-status-dot"></span> ${p.name}
+    </button>
+  `).join('');
+}
+
+let mafiaSelectedTarget = null;
+
+function mafiaVote(targetId, btn) {
+  if (state.nightDone) return;
+  mafiaSelectedTarget = targetId;
+  document.querySelectorAll('#mafia-target-list .player-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  // Pokaż przycisk potwierdzenia
+  document.getElementById('mafia-confirm-btn').style.display = 'block';
+}
+
+function mafiaConfirm() {
+  send({ type: 'MAFIA_VOTE', targetId: mafiaSelectedTarget });
+  state.nightDone = true;
+  document.getElementById('mafia-confirm-btn').style.display = 'none';
+  document.querySelectorAll('#mafia-target-list .player-btn').forEach(b => b.disabled = true);
+}
+
+function updateMafiaVoteLog(voterNames) {
+  const log = document.getElementById('mafia-vote-log');
+  if (!log) return;
+  const entries = Object.values(voterNames).map(v => `${v.voterName} → ${v.targetName}`).join(' | ');
+  log.textContent = `Głosy mafii: ${entries}`;
+}
+
+// ══════════════════════════════════════
+// POLICE NIGHT
+// ══════════════════════════════════════
+function renderPoliceNight() {
+  const list = document.getElementById('police-target-list');
+  list.innerHTML = alivePlayers().map(p => `
+    <button class="player-btn" onclick="policeCheck('${p.id}', this)">
+      <span class="player-status-dot"></span> ${p.name}
+    </button>
+  `).join('');
+}
+
+function policeCheck(targetId, btn) {
+  if (state.nightDone) return;
+  send({ type: 'POLICE_CHECK', targetId });
+  state.nightDone = true;
+  document.querySelectorAll('#police-target-list .player-btn').forEach(b => { b.disabled = true; b.classList.remove('selected'); });
+  btn.classList.add('selected');
+}
+
+function showPoliceResult(target) {
+  const roleLabels = { mafia: '🔪 MAFIA', police: '🔎 Policjant', doctor: '💉 Lekarz', civilian: '👤 Cywil' };
+  const label = roleLabels[target.role] || target.role;
+  // Zapisz do historii
+  policeHistory.push({ name: target.name, label });
+  // Pokaż w panelu nocnym
+  const msg = document.getElementById('police-result-msg');
+  msg.style.display = 'block';
+  msg.textContent = `${target.name} to: ${label}`;
+  document.getElementById('police-done-msg').style.display = 'block';
+  // Odśwież widok dzienny
+  renderPolicePanel();
+}
+
+function renderPolicePanel() {
+  const panel = document.getElementById('police-day-info');
+  if (policeHistory.length === 0) { panel.style.display='none'; return; }
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="font-size:0.75rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">🔎 Twoje ustalenia</div>'
+    + policeHistory.map(r => `<div style="padding:0.3rem 0;border-bottom:1px solid var(--border);font-size:1rem"><span style="color:var(--text)">${r.name}</span> — <span style="color:${r.label.includes('MAFIA')?'var(--red-light)':'var(--green-light)'}">${r.label}</span></div>`).join('');
+}
+
+// ══════════════════════════════════════
+// DOCTOR NIGHT
+// ══════════════════════════════════════
+function renderDoctorNight() {
+  const allAlive = state.players.filter(p => p.alive); // doctor can save self
+  const list = document.getElementById('doctor-target-list');
+  list.innerHTML = allAlive.map(p => `
+    <button class="player-btn" onclick="doctorSave('${p.id}', this)">
+      <span class="player-status-dot"></span> ${p.name}${p.id === state.myId ? ' (Ty)' : ''}
+    </button>
+  `).join('');
+}
+
+function doctorSave(targetId, btn) {
+  if (state.nightDone) return;
+  send({ type: 'DOCTOR_SAVE', targetId });
+  state.nightDone = true;
+  document.querySelectorAll('#doctor-target-list .player-btn').forEach(b => { b.disabled = true; b.classList.remove('selected'); });
+  btn.classList.add('selected');
+}
+
+// ══════════════════════════════════════
+// DAY
+// ══════════════════════════════════════
+function renderDay() {
+  document.getElementById('chat-box').innerHTML = '';
+  document.getElementById('sb-vote').textContent = '';
+  const btn = document.getElementById('vote-for-voting-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '🗳 Zagłosuj za przejściem do głosowania'; btn.style.color = ''; }
+  const bar = document.getElementById('voting-poll-bar');
+  if (bar) bar.style.display = 'none';
+  renderPolicePanel();
+
+}
+
+function showNightResult(msg) {
+  const ann = document.getElementById('day-announcement');
+  if (msg.killed) {
+    ann.className = 'status-msg danger';
+    ann.textContent = `Tej nocy zginął: ${msg.killed.name} (${roleLabel(msg.killed.role)})`;
+  } else {
+    ann.className = 'status-msg success';
+    ann.textContent = msg.saved
+      ? 'Lekarz uratował kogoś tej nocy. Nikt nie zginął!'
+      : 'Ta noc minęła spokojnie. Nikt nie zginął.';
+  }
+  applyPhase('day', state);
+}
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'CHAT_MESSAGE', text });
+  input.value = '';
+}
+
+document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') sendChat();
+});
+
+function appendChat(msg) {
+  const boxes = [document.getElementById('chat-box'), document.getElementById('dead-chat-box')];
+  boxes.forEach(box => {
+    if (!box) return;
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = `<span class="chat-msg-name">${msg.senderName}:</span> ${escapeHtml(msg.text)}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  });
+  document.getElementById('dead-chat-card').style.display = 'block';
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function startVoting() { send({ type: 'START_VOTING' }); }
+
+function voteForVoting() {
+  send({ type: 'VOTE_FOR_VOTING' });
+  const btn = document.getElementById('vote-for-voting-btn');
+  btn.disabled = true;
+  btn.textContent = '✓ Zagłosowałeś za głosowaniem';
+  btn.style.color = 'var(--gold)';
+}
+
+// ══════════════════════════════════════
+// VOTING
+// ══════════════════════════════════════
+function renderVoting() {
+  showPanel('panel-voting');
+  const alive = state.players.filter(p => p.alive !== false && p.id !== state.myId);
+  console.log('[renderVoting] alive:', alive, 'state.players:', state.players, 'myId:', state.myId);
+  const list = document.getElementById('voting-list');
+  if (alive.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-style:italic;padding:1rem">Brak graczy do głosowania</div>';
+  } else {
+    list.innerHTML = alive.map(p => `
+      <button class="player-btn" onclick="dayVote('${p.id}', this)">
+        <span class="player-status-dot"></span> ${p.name}
+      </button>
+    `).join('');
+  }
+
+  const total = state.players.filter(p => p.alive).length;
+  document.getElementById('vote-count-text').textContent = `Głosy: 0/${total}`;
+}
+
+function dayVote(targetId, btn) {
+  if (state.votedToday) return;
+  send({ type: 'DAY_VOTE', targetId });
+  state.votedToday = true;
+  document.querySelectorAll('#voting-list .player-btn').forEach(b => { b.disabled = true; b.classList.remove('selected'); });
+  btn.classList.add('selected');
+}
+
+function updateVoteProgress(count, total) {
+  document.getElementById('vote-count-text').textContent = `Głosy: ${count}/${total}`;
+  document.getElementById('sb-vote').textContent = `⚖ Zagłosowało: ${count}/${total}`;
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  document.getElementById('vote-bar-fill').style.width = pct + '%';
+}
+
+function showDayResult(msg) {
+  const mafiaLeft = msg.mafiaLeft;
+  // Brief notification then night
+  const ann = document.getElementById('day-announcement');
+  if (msg.eliminated) {
+    ann.className = 'status-msg danger';
+    ann.textContent = `${msg.eliminated.name} (${roleLabel(msg.eliminated.role)}) zostaje wyeliminowany! Mafia: ${mafiaLeft}`;
+  } else {
+    ann.className = 'status-msg';
+    ann.textContent = `Remis w głosowaniu! Nikt nie zostaje wyeliminowany. Mafia: ${mafiaLeft}. Nastała noc…`;
+  }
+  state.alive = state.players.find(p => p.id === state.myId)?.alive ?? state.alive;
+  applyPhase('night', state);
+}
+
+// ══════════════════════════════════════
+// DEATH
+// ══════════════════════════════════════
+function showDeath(role) {
+  state.alive = false;
+  document.getElementById('dead-role-reveal').textContent = roleLabel(role);
+  showPanel('panel-dead');
+}
+
+// ══════════════════════════════════════
+// GAME OVER
+// ══════════════════════════════════════
+function showGameOver(msg) {
+  showPanel('panel-gameover');
+  const isMafiaWin = msg.winner === 'mafia';
+  document.getElementById('gameover-icon').textContent = isMafiaWin ? '🔪' : '🌅';
+  document.getElementById('gameover-title').textContent = isMafiaWin ? 'Mafia wygrywa!' : 'Miasto wygrywa!';
+  document.getElementById('gameover-desc').textContent = isMafiaWin
+    ? 'Cień pochłonął miasto… mafia triumfuje.'
+    : 'Mafia została pokonana! Miasto jest bezpieczne.';
+
+  const container = document.getElementById('gameover-players');
+  container.innerHTML = (msg.players || []).map(p => `
+    <div class="winner-card ${p.role} ${p.alive ? '' : 'dead'}">
+      <div>${p.name}</div>
+      <div class="w-role">${roleLabel(p.role)} ${p.alive ? '' : '💀'}</div>
+    </div>
+  `).join('');
+}
+
+function showNews(text, type) {
+  const el = document.getElementById('sb-news');
+  el.style.display = 'block';
+  if (type === 'danger') {
+    el.style.background = 'rgba(192,57,43,0.15)';
+    el.style.border = '1px solid rgba(192,57,43,0.4)';
+    el.style.color = 'var(--red-light)';
+  } else if (type === 'success') {
+    el.style.background = 'rgba(39,174,96,0.12)';
+    el.style.border = '1px solid rgba(39,174,96,0.3)';
+    el.style.color = 'var(--green-light)';
+  } else {
+    el.style.background = 'rgba(212,168,83,0.1)';
+    el.style.border = '1px solid rgba(212,168,83,0.3)';
+    el.style.color = 'var(--gold-light)';
+  }
+  el.textContent = text;
+}
+
+function updateStatusBar() {
+  // Mafia zna swoje role, reszta nie — pokaż ? jeśli nie wiemy
+  const knownMafia = state.players.filter(p=>p.alive&&p.role==='mafia').length;
+  // Używaj danych z serwera dla wszystkich — serwer zawsze wysyła mafiaLeft
+  const mafiaLeft = state.knownMafiaCount !== undefined ? state.knownMafiaCount : (state.role === 'mafia' ? knownMafia : '?');
+  const aliveLeft = state.players.filter(p=>p.alive).length;
+  document.getElementById('sb-round').textContent = state.round || 1;
+  document.getElementById('sb-mafia').textContent = mafiaLeft;
+  document.getElementById('sb-alive').textContent = aliveLeft;
+  document.getElementById('status-bar').style.display = 'flex';
+  if (state.role === 'mafia') {
+    document.getElementById('mafia-chat-box').style.display = 'block';
+  }
+}
+
+function sendMafiaChat() {
+  const input = document.getElementById('mafia-chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'MAFIA_CHAT', text });
+  input.value = '';
+}
+
+document.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && document.activeElement.id === 'mafia-chat-input') sendMafiaChat();
+});
+
+function roleLabel(role) {
+  const map = { mafia: 'Mafia', police: 'Policjant', doctor: 'Lekarz', civilian: 'Cywil' };
+  return map[role] || role;
+}
+
+// ══════════════════════════════════════
+// DINO GAME
+// ══════════════════════════════════════
+function startDinoGame() {
+  const canvas = document.getElementById('dino-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const W = canvas.width, H = canvas.height;
+  const GROUND = H - 20;
+
+  let dino = { x: 60, y: GROUND - 40, w: 30, h: 40, vy: 0, jumping: false };
+  let obstacles = [];
+  let score = 0;
+  let gameRunning = true;
+  let speed = 4;
+  let frameCount = 0;
+  let animId;
+
+  function jump() {
+    if (!dino.jumping && gameRunning) {
+      dino.vy = -12;
+      dino.jumping = true;
+    } else if (!gameRunning) {
+      resetDino();
+    }
+  }
+
+  function resetDino() {
+    dino = { x: 60, y: GROUND - 40, w: 30, h: 40, vy: 0, jumping: false };
+    obstacles = [];
+    score = 0;
+    speed = 4;
+    frameCount = 0;
+    gameRunning = true;
+    if (animId) cancelAnimationFrame(animId);
+    loop();
+  }
+
+  document.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); jump(); } });
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, { passive: false });
+  canvas.addEventListener('click', jump);
+
+  function loop() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Ground
+    ctx.fillStyle = '#333';
+    ctx.fillRect(0, GROUND, W, 2);
+
+    // Dino (simple rectangle + eye)
+    ctx.fillStyle = gameRunning ? '#d4a853' : '#c0392b';
+    ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+    // Eye
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(dino.x + dino.w - 8, dino.y + 8, 5, 5);
+    // Tail
+    ctx.fillStyle = '#d4a853';
+    ctx.fillRect(dino.x - 10, dino.y + dino.h - 14, 12, 8);
+
+    // Physics
+    if (gameRunning) {
+      dino.vy += 0.6;
+      dino.y += dino.vy;
+      if (dino.y >= GROUND - dino.h) {
+        dino.y = GROUND - dino.h;
+        dino.vy = 0;
+        dino.jumping = false;
+      }
+
+      // Spawn obstacles
+      frameCount++;
+      if (frameCount % Math.floor(90 - score / 5) === 0) {
+        const cactusH = 25 + Math.random() * 25;
+        obstacles.push({ x: W, y: GROUND - cactusH, w: 15, h: cactusH });
+      }
+
+      speed = 4 + score / 20;
+      score += 0.05;
+
+      // Move obstacles
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].x -= speed;
+        if (obstacles[i].x + obstacles[i].w < 0) { obstacles.splice(i, 1); continue; }
+
+        // Collision
+        if (
+          dino.x + 4 < obstacles[i].x + obstacles[i].w &&
+          dino.x + dino.w - 4 > obstacles[i].x &&
+          dino.y + 4 < obstacles[i].y + obstacles[i].h &&
+          dino.y + dino.h > obstacles[i].y
+        ) {
+          gameRunning = false;
+        }
+      }
+    }
+
+    // Draw obstacles (cacti)
+    ctx.fillStyle = '#27ae60';
+    obstacles.forEach(o => {
+      ctx.fillRect(o.x, o.y, o.w, o.h);
+      ctx.fillRect(o.x - 6, o.y + 8, 6, 10);
+      ctx.fillRect(o.x + o.w, o.y + 12, 6, 8);
+    });
+
+    // Score
+    ctx.fillStyle = '#6a6055';
+    ctx.font = '14px Crimson Text, serif';
+    ctx.fillText(`Wynik: ${Math.floor(score)}`, W - 100, 20);
+
+    if (!gameRunning) {
+      ctx.fillStyle = 'rgba(10,10,10,0.7)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#e74c3c';
+      ctx.font = 'bold 20px Playfair Display, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Koniec!', W / 2, H / 2 - 15);
+      ctx.fillStyle = '#a89880';
+      ctx.font = '14px Crimson Text, serif';
+      ctx.fillText(`Wynik: ${Math.floor(score)} — kliknij/spacja aby grać znowu`, W / 2, H / 2 + 10);
+      ctx.textAlign = 'left';
+    }
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  loop();
+}
+
+// ══════════════════════════════════════
+// INIT — connect and apply initial state
+// ══════════════════════════════════════
+// On page load, initWebSocket was already called above
+// The ws.onopen will drive the phase
+// But since we reconnect as "new player", we rely on saved state
+// Apply phase immediately after WS tries to open
+setTimeout(() => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    // Still connecting — wait for onopen
+    applyPhase(state.phase || 'night', state);
+  }
+}, 100);
+</script>
+</body>
+</html>

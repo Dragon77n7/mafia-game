@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAFIA — Gra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --red: #c0392b;
+    --red-light: #e74c3c;
+    --gold: #d4a853;
+    --gold-light: #f0c060;
+    --text: #e8e0d5;
+    --text-dim: #7a7060;
+    --text-mid: #a89880;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Text', Georgia, serif;
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+
+  /* Atmospheric background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(192,57,43,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 80% 20%, rgba(212,168,83,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    padding: 2rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .logo-eyebrow {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: clamp(3.5rem, 12vw, 5rem);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 40%, var(--red-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+  }
+
+  .logo-sub {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  /* Decorative line */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 2rem 0;
+    color: var(--border);
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border));
+  }
+  .divider::after { background: linear-gradient(to left, transparent, var(--border)); }
+  .divider span { color: var(--text-dim); font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Crimson Text', serif;
+    font-size: 1.1rem;
+    padding: 0.7rem 1rem;
+    border-radius: 1px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 1rem;
+  }
+  input[type="text"]:focus { border-color: var(--gold); }
+  input[type="text"]::placeholder { color: var(--text-dim); }
+
+  .btn {
+    width: 100%;
+    padding: 0.85rem 1.5rem;
+    border: none;
+    border-radius: 1px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow-y: auto;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--red) 0%, var(--red-light) 100%);
+    color: white;
+  }
+  .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+  }
+  .btn-secondary:hover { background: rgba(212,168,83,0.1); }
+
+  .error-msg {
+    color: var(--red-light);
+    font-size: 0.9rem;
+    font-style: italic;
+    text-align: center;
+    margin-top: 0.5rem;
+    min-height: 1.2rem;
+  }
+
+  /* Lobby view */
+  #lobby-view { display: none; }
+
+  .room-code-display {
+    text-align: center;
+    padding: 1.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+    border-radius: 2px;
+  }
+
+  .room-code-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 0.3rem;
+  }
+
+  .room-code-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 0.3em;
+  }
+
+  .players-list {
+    list-style: none;
+    margin-bottom: 1.5rem;
+  }
+
+  .players-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 1.05rem;
+  }
+
+  .player-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex-shrink: 0;
+  }
+
+  .player-host-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--red-light);
+    background: rgba(192,57,43,0.15);
+    border: 1px solid rgba(192,57,43,0.3);
+    padding: 0.1rem 0.4rem;
+  }
+
+  /* Settings grid */
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .setting-item { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  input[type="number"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Crimson Text', serif;
+    font-size: 1.2rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 1px;
+    outline: none;
+    text-align: center;
+  }
+  input[type="number"]:focus { border-color: var(--gold); }
+
+  .waiting-msg {
+    text-align: center;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-top: 1rem;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+  /* Skull decoration */
+  .skull {
+    font-size: 1.2rem;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- MENU GŁÓWNE -->
+  <div id="menu-view">
+    <header>
+      <div class="logo-eyebrow">nocna gra towarzyska</div>
+      <h1>MAFIA</h1>
+      <div class="logo-sub">Kto jest wśród nas?</div>
+    </header>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="skull">☽</span> Dołącz lub stwórz pokój
+      </div>
+      <label>Twoje imię</label>
+      <input type="text" id="player-name" placeholder="Jak masz na imię?" maxlength="20">
+
+      <div class="divider"><span>★</span></div>
+
+      <label>Kod pokoju (jeśli dołączasz)</label>
+      <input type="text" id="room-code-input" placeholder="np. AB3XY" maxlength="5" style="text-transform:uppercase;letter-spacing:0.3em">
+
+      <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
+        <button class="btn btn-primary" onclick="createRoom()">Stwórz pokój</button>
+        <button class="btn btn-secondary" onclick="joinRoom()">Dołącz</button>
+      </div>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- LOBBY -->
+  <div id="lobby-view">
+    <header style="margin-bottom:2rem">
+      <div class="logo-eyebrow">poczekaj na graczy</div>
+      <h1 style="font-size:3rem">Lobby</h1>
+    </header>
+
+    <div class="room-code-display">
+      <div class="room-code-label">Kod pokoju — podziel się z przyjaciółmi</div>
+      <div class="room-code-value" id="display-room-code">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">☽ Gracze</div>
+      <ul class="players-list" id="players-list"></ul>
+
+      <!-- Ustawienia (tylko host) -->
+      <div id="host-settings" style="display:none">
+        <div class="card-title" style="margin-top:1rem">⚙ Ustawienia rozgrywki</div>
+        <div class="settings-grid">
+<div class="setting-item">
+            <label>Mafia</label>
+            <input type="number" id="s-mafia" min="1" max="5" value="1" onchange="updateSettings()">
+          </div>
+          <div class="setting-item">
+            <label>Policjanci</label>
+            <input type="number" id="s-police" min="0" max="3" value="1" onchange="updateSettings()">
+          </div>
+          <div class="setting-item">
+            <label>Lekarze</label>
+            <input type="number" id="s-doctor" min="0" max="3" value="1" onchange="updateSettings()">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="startGame()" id="start-btn">Rozpocznij grę</button>
+      </div>
+
+      <div id="guest-waiting" style="display:none">
+        <div class="waiting-msg">Czekanie na hosta…</div>
+      </div>
+
+      <div class="error-msg" id="lobby-error"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let ws, myId, myRoom, isHost = false;
+
+  function getWsUrl() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${location.host}`;
+  }
+
+  function connect(callback) {
+    ws = new WebSocket(getWsUrl());
+    ws.onopen = callback;
+    ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+    ws.onerror = () => showError('Błąd połączenia z serwerem');
+  }
+
+  function handleMessage(msg) {
+    switch (msg.type) {
+      case 'ROOM_CREATED':
+        myId = msg.playerId;
+        myRoom = msg.roomCode;
+        isHost = true;
+        showLobby(msg.roomCode);
+        break;
+
+      case 'ROOM_JOINED':
+        myId = msg.playerId;
+        myRoom = msg.roomCode;
+        isHost = false;
+        showLobby(msg.roomCode);
+        break;
+
+      case 'LOBBY_UPDATE':
+      case 'PLAYER_LEFT':
+        updatePlayersList(msg.players);
+        break;
+
+      case 'SETTINGS_UPDATE':
+        if (!isHost) applySettings(msg.settings);
+        break;
+
+      case 'GAME_STARTED':
+      case 'NIGHT_START':
+        // Save all needed state to sessionStorage and redirect
+        sessionStorage.setItem('mafiaState', JSON.stringify({
+          myId, myRoom, isHost,
+          role: msg.role || sessionStorage.getItem('mafiaRole'),
+          phase: msg.phase || 'night',
+          round: msg.round,
+          players: msg.players,
+          mafiaTeam: msg.mafiaTeam || [],
+        }));
+        if (msg.role) sessionStorage.setItem('mafiaRole', msg.role);
+        window.location.href = 'game.html';
+        break;
+
+      case 'ERROR':
+        showError(msg.msg);
+        break;
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('error-msg').textContent = msg;
+    document.getElementById('lobby-error').textContent = msg;
+    setTimeout(() => {
+      document.getElementById('error-msg').textContent = '';
+      document.getElementById('lobby-error').textContent = '';
+    }, 3000);
+  }
+
+  function createRoom() {
+    const name = document.getElementById('player-name').value.trim();
+    if (!name) { showError('Podaj swoje imię'); return; }
+    connect(() => ws.send(JSON.stringify({ type: 'CREATE_ROOM', name })));
+  }
+
+  function joinRoom() {
+    const name = document.getElementById('player-name').value.trim();
+    const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+    if (!name) { showError('Podaj swoje imię'); return; }
+    if (!code) { showError('Podaj kod pokoju'); return; }
+    connect(() => ws.send(JSON.stringify({ type: 'JOIN_ROOM', name, roomCode: code })));
+  }
+
+  function showLobby(code) {
+    document.getElementById('menu-view').style.display = 'none';
+    document.getElementById('lobby-view').style.display = 'block';
+    document.getElementById('display-room-code').textContent = code;
+    document.getElementById('host-settings').style.display = isHost ? 'block' : 'none';
+    document.getElementById('guest-waiting').style.display = isHost ? 'none' : 'block';
+  }
+
+  function updatePlayersList(players) {
+    const ul = document.getElementById('players-list');
+    ul.innerHTML = players.map(p => `
+      <li>
+        <span class="player-dot"></span>
+        ${p.name}
+        ${p.isHost ? '<span class="player-host-badge">host</span>' : ''}
+      </li>
+    `).join('');
+  }
+
+  function updateSettings() {
+    if (!isHost) return;
+    ws.send(JSON.stringify({
+      type: 'UPDATE_SETTINGS',
+      settings: {
+mafiaCount: +document.getElementById('s-mafia').value,
+        policeCount: +document.getElementById('s-police').value,
+        doctorCount: +document.getElementById('s-doctor').value,
+      }
+    }));
+  }
+
+  function applySettings(s) {
+    document.getElementById('s-rounds').value = s.rounds;
+    document.getElementById('s-mafia').value = s.mafiaCount;
+    document.getElementById('s-police').value = s.policeCount;
+    document.getElementById('s-doctor').value = s.doctorCount;
+  }
+
+  function startGame() {
+    ws.send(JSON.stringify({ type: 'START_GAME' }));
+  }
+
+  // Store ws for game page navigation
+  window.addEventListener('beforeunload', () => {
+    if (ws) sessionStorage.setItem('wsOpen', '1');
+  });
+</script>
+</body>
+</html>
